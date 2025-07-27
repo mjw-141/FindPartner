@@ -3,6 +3,12 @@ package com.maopi.usercenter.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.maopi.usercenter.model.domain.Team;
 import com.maopi.usercenter.model.domain.User;
+import com.maopi.usercenter.model.dto.TeamQuery;
+import com.maopi.usercenter.model.request.TeamJoinRequest;
+import com.maopi.usercenter.model.request.TeamUpdateRequest;
+import com.maopi.usercenter.model.vo.TeamUserVO;
+
+import java.util.List;
 
 
 /**
@@ -13,4 +19,12 @@ import com.maopi.usercenter.model.domain.User;
 public interface TeamService extends IService<Team> {
     long addTeam(Team team, User loginUser);
 
+    //搜索队伍
+
+    List<TeamUserVO> listTeams(TeamQuery teamQuery,boolean isAdmin);
+
+    //更新队伍
+    boolean updateTeam(TeamUpdateRequest teamUpdateRequest,User loginUser);
+
+    boolean joinTeam(TeamJoinRequest teamJoinRequest, User loginUser);
 }
