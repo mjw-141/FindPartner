@@ -7,8 +7,11 @@ import com.google.gson.reflect.TypeToken;
 import com.maopi.usercenter.common.ErrorCode;
 import com.maopi.usercenter.exception.BusinessException;
 import com.maopi.usercenter.model.domain.User;
+import com.maopi.usercenter.model.vo.UserVO;
 import com.maopi.usercenter.service.UserService;
 import com.maopi.usercenter.mapper.UserMapper;
+import com.maopi.usercenter.utils.AlgorithmUtils;
+import javafx.util.Pair;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -17,13 +20,11 @@ import org.springframework.util.DigestUtils;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.maopi.usercenter.contant.UserConstant.ADMIN_ROLE;
 import static com.maopi.usercenter.contant.UserConstant.USER_LOGIN_STATE;
@@ -201,6 +202,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         safetyUser.setGender(originUser.getGender());
         safetyUser.setPhone(originUser.getPhone());
         safetyUser.setEmail(originUser.getEmail());
+        safetyUser.setTags(originUser.getTags());
         safetyUser.setPlanetCode(originUser.getPlanetCode());
         safetyUser.setUserRole(originUser.getUserRole());
         safetyUser.setUserStatus(originUser.getUserStatus());
@@ -278,6 +280,63 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return loginUser != null && loginUser.getUserRole() == ADMIN_ROLE;
     }
 
+    @Override
+    public List<User> matchUsers(long num, User loginUser) {
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("id", "tags");
+        queryWrapper.isNotNull("tags");
+        List<User> userList = this.list(queryWrapper);
+        String tags = loginUser.getTags();
+        Gson gson = new Gson();
+        List<String> tagList = gson.fromJson(tags, new TypeToken<List<String>>() {}.getType());
+        // 用户列表的下标 => 相似度
+        List<Pair<User, Long>> list = new ArrayList<>();
+        for (int i = 0; i < userList.size(); i++) {
+            User user = userList.get(i);
+            String userTags = user.getTags();
+            // 无标签或者为当前用户自己
+            if (StringUtils.isBlank(userTags) || user.getId() == loginUser.getId()) {
+                continue;
+            }
+            List<String> userTagList = gson.fromJson(userTags, new TypeToken<List<String>>() {
+            }.getType());
+            // 计算分数
+            long distance = AlgorithmUtils.minDistance(tagList, userTagList);
+            list.add(new Pair<>(user, distance));
+        }
+        // 按编辑距离由小到大排序
+        List<Pair<User, Long>> topUserPairList = list.stream()
+                .sorted((a, b) -> (int) (a.getValue() - b.getValue()))
+                .limit(num).collect(Collectors.toList());
+
+        // 原本顺序的 userId 列表
+        List<Long> userIdList = topUserPairList.stream()
+                .map(pair -> pair.getKey().getId())
+                .collect(Collectors.toList());
+
+        //注意：数据库使用 IN 查询时，返回结果的顺序通常是不保证的，可能不是 [1,3,2]，而是按主键排序如 [1,2,3]。
+        QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
+        userQueryWrapper.in("id", userIdList);
+
+        // 1, 3, 2
+        // User1、User2、User3
+        // 1 => User1, 2 => User2, 3 => User3
+        //.collect(Collectors.groupingBy(User::getId))：将查询结果按 id 分组，形成一个 Map，key 是用户 ID，value 是包含一个用户对象的 List（因为每个 ID 唯一，所以每个 List 只有一个元素）。
+        Map<Long, List<User>> userIdUserListMap = this.list(userQueryWrapper).stream()
+                .map(user -> getSafetyUser(user))
+                .collect(Collectors.groupingBy(User::getId));
+
+        List<User> finalUserList = new ArrayList<>();
+
+        //遍历原始排序的 userIdList（如 [1, 3, 2]）。
+        //对每个 userId，从 userIdUserListMap 中取出对应的用户对象（通过 .get(0) 取出 List 中唯一的元素）。
+        //添加到 finalUserList 中。
+        for (Long userId : userIdList) {
+            finalUserList.add(userIdUserListMap.get(userId).get(0));
+        }
+
+        return finalUserList;
+    }
 
     @Deprecated
     public List<User> searchUsersByTagsBySQL(List<String> tagNameList) {

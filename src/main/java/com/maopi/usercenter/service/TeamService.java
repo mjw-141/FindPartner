@@ -5,6 +5,7 @@ import com.maopi.usercenter.model.domain.Team;
 import com.maopi.usercenter.model.domain.User;
 import com.maopi.usercenter.model.dto.TeamQuery;
 import com.maopi.usercenter.model.request.TeamJoinRequest;
+import com.maopi.usercenter.model.request.TeamQuitRequest;
 import com.maopi.usercenter.model.request.TeamUpdateRequest;
 import com.maopi.usercenter.model.vo.TeamUserVO;
 
@@ -27,4 +28,9 @@ public interface TeamService extends IService<Team> {
     boolean updateTeam(TeamUpdateRequest teamUpdateRequest,User loginUser);
 
     boolean joinTeam(TeamJoinRequest teamJoinRequest, User loginUser);
+
+    boolean quitTeam(TeamQuitRequest teamQuitRequest, User loginUser);
+
+    //解散队伍
+    boolean deleteTeam(long id, User loginUser);
 }

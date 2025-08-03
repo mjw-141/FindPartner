@@ -8,6 +8,7 @@ import java.util.Date;
 /**
  * @Author 毛嘉伟
  * @Date 2025/07/27 10:44 （可以根据需要修改）
+ * 用户加入队伍
  * @Version 1.0 （版本号）
  */
 

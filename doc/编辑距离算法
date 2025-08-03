@@ -1,0 +1,39 @@
+            // 使用 PriorityQueue 来维持最优的前 num 个用户
+            PriorityQueue<Pair<User, Long>> priorityQueue = new PriorityQueue<>((Comparator.comparingLong(Pair::getValue)));
+
+            for (User user : userList) {
+                String userTags = user.getTags();
+                if (StringUtils.isBlank(userTags) || Objects.equals(user.getId(), loginUser.getId())) {
+                    continue;
+                }
+
+                List<String> userTagList = gson.fromJson(userTags, new TypeToken<List<String>>() {}.getType());
+                long distance = AlgorithmUtils.minDistance(tagList, userTagList);
+
+                // 仅当队列大小不超过 num 时添加
+                if (priorityQueue.size() < num) {
+                    priorityQueue.add(new Pair<>(user, distance));
+                } else if (distance < priorityQueue.peek().getValue()) {
+                    priorityQueue.poll();
+                    priorityQueue.add(new Pair<>(user, distance));
+                }
+            }
+
+            // 提取最终的前 num 个用户
+            List<Long> userIdList = new ArrayList<>();
+            while (!priorityQueue.isEmpty()) {
+                userIdList.add(priorityQueue.poll().getKey().getId());
+            }
+
+            QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
+            userQueryWrapper.in("id", userIdList);
+            // 查完的数据反而没有顺序了, 使用map映射一下
+            Map<Long, User> userIdUserMap = this.list(userQueryWrapper)
+                    .stream()
+                    .collect(Collectors.toMap(User::getId, this::getSafetyUser));
+
+            List<User> finalUserList = new ArrayList<>();
+            for (Long userId : userIdList) {
+                // 由原本排序的id使用map获取到完整数据
+                finalUserList.add(userIdUserMap.get(userId));
+            }

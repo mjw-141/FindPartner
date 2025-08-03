@@ -4,6 +4,9 @@ package com.maopi.usercenter.model.dto;
 import com.maopi.usercenter.common.PageRequest;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import reactor.util.annotation.Nullable;
+
+import java.util.List;
 
 /**
  * @Author 毛嘉伟
@@ -19,6 +22,11 @@ public class TeamQuery extends PageRequest {
      * id
      */
     private Long id;
+
+    /**
+     * 存储一系列ID的列表。
+     */
+    private List<Long> idList;
 
     /**
      * 队伍名称
@@ -45,6 +53,8 @@ public class TeamQuery extends PageRequest {
      * 用户id（队长id）
      */
     private Long userId;
+
+
 
     /**
      * 0 - 公开, 1 - 私有, 2 - 加密
