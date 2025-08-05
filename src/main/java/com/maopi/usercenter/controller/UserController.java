@@ -149,7 +149,7 @@ public class UserController {
 
 
     @GetMapping("/recommend")
-    public BaseResponse<Page<User>> recommendUsers(long pagesize,long pagenum,String username, HttpServletRequest request) {
+    public BaseResponse<Page<User>> recommendUsers(long pageSize,long pageNum,String username, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
 
         //缓存中有没有
@@ -161,7 +161,7 @@ public class UserController {
         }
         //无缓存，查数据库
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-        userPage = userService.page(new Page<>(pagenum,pagesize),queryWrapper);
+        userPage = userService.page(new Page<>(pageNum,pageSize),queryWrapper);
         //写缓存
         try {
             valueOperations.set(rediskey,userPage,300000, TimeUnit.MILLISECONDS);
@@ -195,6 +195,22 @@ public class UserController {
         }
         boolean b = userService.removeById(id);
         return ResultUtils.success(b);
+    }
+
+    /**
+     * 获取最匹配的用户
+     *
+     * @param num    匹配用户的数量
+     * @param request HTTP请求对象
+     * @return 匹配到的用户列表
+     */
+    @GetMapping("/match")
+    public BaseResponse<List<User>> matchUsers(long num, HttpServletRequest request) {
+        if (num <= 0 || num > 20) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User user = userService.getLoginUser(request);
+        return ResultUtils.success(userService.matchUsers(num, user));
     }
 
 
